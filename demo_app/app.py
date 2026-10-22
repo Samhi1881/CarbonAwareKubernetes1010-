@@ -1,17 +1,16 @@
-"""Tiny CPU-bound HTTP service used as the autoscaling target (GET /work, GET /healthz)."""
-import os
+﻿import os
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-WORK_MS = float(os.environ.get("WORK_MS", "25"))
+WORK_MS = float(os.environ.get("WORK_MS", "10"))
 
 
 class H(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/work"):
-            end = time.perf_counter() + WORK_MS / 1000
-            while time.perf_counter() < end:      # burn CPU so latency rises with load
-                sum(i * i for i in range(200))
+            end = time.thread_time() + WORK_MS / 1000   # real CPU time, so latency rises with load
+            while time.thread_time() < end:
+                pass
         body = b"ok\n"
         self.send_response(200)
         self.send_header("Content-Length", str(len(body)))
@@ -22,4 +21,5 @@ class H(BaseHTTPRequestHandler):
         pass
 
 
+ThreadingHTTPServer.request_queue_size = 128
 ThreadingHTTPServer(("0.0.0.0", 8000), H).serve_forever()
